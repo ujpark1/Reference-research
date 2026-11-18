@@ -63,9 +63,32 @@ async function ytGet(endpoint, params, cost) {
     if (["quotaExceeded", "dailyLimitExceeded", "rateLimitExceeded"].includes(reason)) {
       throw new Error(`QUOTA::API 쿼터 초과 (약 ${ytQuotaUsed}유닛 사용). 내일 다시 시도하세요.`);
     }
-    throw new Error(body?.error?.message || `API 오류 (${resp.status})`);
+    throw new Error(ytExplainError(body?.error || {}, resp.status));
   }
   return resp.json();
+}
+
+// Google의 영어 오류를 그대로 보여주면 원인을 알기 어려워서, 사유 코드를 읽어 "무엇을 고치면 되는지"를 앞에 붙인다.
+// 사유 코드는 error.errors[].reason(구형) · error.status · error.details[].reason(신형) 세 군데에 나뉘어 온다.
+function ytExplainError(err, httpStatus) {
+  const reasons = [...new Set([
+    ...(err.errors || []).map(e => e.reason), err.status, ...(err.details || []).map(d => d.reason),
+  ].filter(Boolean))];
+  const has = re => reasons.some(r => re.test(r));
+  const msg = err.message || `API 오류 (${httpStatus})`;
+  let hint = "";
+  if (has(/SERVICE_DISABLED|accessNotConfigured/i) || /has not been used|is disabled/i.test(msg)) {
+    hint = "이 키가 속한 Google Cloud 프로젝트에서 YouTube Data API v3가 꺼져 있습니다. 콘솔 → API 및 서비스 → 라이브러리에서 'YouTube Data API v3'를 찾아 '사용 설정'을 눌러주세요 (반영까지 1~2분).";
+  } else if (has(/API_KEY_SERVICE_BLOCKED/)) {
+    hint = "이 키의 'API 제한사항'에 YouTube Data API v3가 빠져 있습니다. 콘솔 → 사용자 인증 정보 → 키 수정에서 YouTube Data API v3를 추가해주세요.";
+  } else if (has(/REFERRER_BLOCKED|IP_ADDRESS_BLOCKED|ANDROID_APP_BLOCKED|IOS_APP_BLOCKED/)) {
+    hint = "이 키의 '애플리케이션 제한사항'(웹사이트·IP) 때문에 이 주소에서는 쓸 수 없습니다. 제한을 '없음'으로 바꾸거나 이 페이지 주소를 허용해주세요.";
+  } else if (has(/API_KEY_INVALID|keyInvalid/i) || /API key not valid/i.test(msg)) {
+    hint = "API 키가 올바르지 않습니다. 복사하다 빠진 글자가 없는지, Google Cloud에서 만든 API 키가 맞는지 확인해주세요.";
+  } else if (httpStatus === 401 || httpStatus === 403 || has(/PERMISSION_DENIED|forbidden/i)) {
+    hint = "이 키로는 YouTube Data API를 쓸 권한이 없습니다. ① 키가 속한 프로젝트에서 YouTube Data API v3를 '사용 설정'했는지 ② 키의 'API 제한사항'에 YouTube Data API v3가 들어 있는지 ③ Gemini(AI Studio) 등 다른 서비스용 키를 넣은 건 아닌지 확인해주세요.";
+  }
+  return (hint ? hint + "\n" : "") + `Google 응답: ${msg}` + (reasons.length ? ` [${reasons.join(" · ")}]` : "");
 }
 
 async function ytSearchVideos(query, publishedAfter, maxResults) {
@@ -229,7 +252,7 @@ async function ytRun() {
       });
     } catch (e) {
       const msg = String(e.message || e).replace(/^QUOTA::/, "");
-      setStatus(pf, `❌ ${escapeHtml(msg)}` + (S[pf].rows.length ? "<br>이전 결과는 유지됩니다." : ""), null, true);
+      setStatus(pf, `❌ ${escapeHtml(msg).replace(/\n/g, "<br>")}` + (S[pf].rows.length ? "<br>이전 결과는 유지됩니다." : ""), null, true);
     }
   });
 }
@@ -261,7 +284,7 @@ function ytExtractChannelRef(input) {
 
 function analyzeError(el, e) {
   const msg = String(e.message || e).replace(/^QUOTA::/, "");
-  el.innerHTML = `<div class="note" style="margin-top:10px;color:var(--danger)">❌ ${escapeHtml(msg)}</div>`;
+  el.innerHTML = `<div class="note" style="margin-top:10px;color:var(--danger)">❌ ${escapeHtml(msg).replace(/\n/g, "<br>")}</div>`;
 }
 
 async function ytAnalyze() {
