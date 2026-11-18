@@ -27,18 +27,38 @@ function igNorm(p) {
     date: toDate(pick(p, "timestamp", "takenAt", "taken_at", "takenAtTimestamp")),
     duration: Math.round(Number(pick(p, "videoDuration", "video_duration")) || 0),
     url: pick(p, "url", "postUrl") || (code ? `https://www.instagram.com/p/${code}/` : ""),
-    thumb: pick(p, "displayUrl", "thumbnailUrl", "imageUrl", "images.0") || "",
+    thumb: pick(p, "displayUrl", "thumbnailUrl", "thumbnailSrc", "imageUrl", "images.0", "childPosts.0.displayUrl") || "",
     pinned: !!p.isPinned,
   };
 }
 
-// 프로필의 최근 게시물로 계정 평균 반응수 계산
-function igBaseline(profile, exclude) {
+// 프로필의 최근 게시물로 계정 평균 반응수 계산.
+// target(판정할 게시물)을 주면 ① 자기 자신은 빼고 ② 같은 종류끼리만 비교한다 — 릴스는 보통 포스트보다
+// 반응이 훨씬 커서 섞어 평균 내면 배수가 왜곡된다. 같은 종류가 3개 미만이면 전체로 비교(sameKind=false).
+function igBaseline(profile, target) {
   let posts = (profile?.latestPosts || []).map(igNorm).filter(p => p.metric != null);
   const unpinned = posts.filter(p => !p.pinned);
   if (unpinned.length >= 3) posts = unpinned;
-  if (exclude) posts = posts.filter(p => p.id !== exclude.id && (!exclude.code || p.code !== exclude.code));
-  return { avg: mean(posts.map(p => p.metric)), n: posts.length, metrics: posts.map(p => p.metric) };
+  let sameKind = false;
+  if (target) {
+    posts = posts.filter(p => p.id !== target.id && (!target.code || p.code !== target.code));
+    const same = posts.filter(p => (p.kind === "릴스") === (target.kind === "릴스"));
+    if (same.length >= 3) { posts = same; sameKind = true; }
+  }
+  return { avg: mean(posts.map(p => p.metric)), n: posts.length, metrics: posts.map(p => p.metric), sameKind };
+}
+
+// 검색 결과에 가끔 이미지·조회수가 빠진 "반쪽" 게시물이 섞여 온다(2026-11 실측 12개 중 1개).
+// 같은 게시물이 그 계정 프로필의 최근 게시물에 있으면 거기서 채운다 (추가 비용 없음).
+function igFillFromProfile(n, prof) {
+  if (n.thumb && (n.kind !== "릴스" || n.views != null)) return n;
+  const m = (prof?.latestPosts || []).map(igNorm).find(p => (n.code && p.code === n.code) || p.id === n.id);
+  if (m) {
+    n.thumb ||= m.thumb;
+    n.views ??= m.views;
+    n.duration ||= m.duration;
+  }
+  return n;
 }
 
 function igRow(n, subs, avg) {
@@ -91,15 +111,19 @@ async function igRun() {
     return;
   }
   const label = (mode === "hashtag" ? "#" : "") + term;
+  const wantReels = type === "reels";
+  const kindWord = { posts: "포스트", reels: "릴스", all: "게시물" }[type] || "게시물";
+  // "posts" 결과에는 릴스가 많이 섞여 온다 → 포스트만 볼 때는 2배를 가져와서 릴스를 걸러낸다
+  const fetchLimit = type === "posts" ? Math.min(max * 2, 100) : max;
   const price = APIFY_ACTORS.igSearch.price;
   let cost = 0;
 
   await withBusy(pf, "ig-runBtn", ICONS.spinner + " 수집 중...", async () => {
     try {
-      const step1 = sec => setStatus(pf, `🔎 [1/3] 인스타그램에서 "${escapeHtml(label)}" ${type === "reels" ? "릴스" : "게시물"} 찾는 중...${waitMsg(sec)}`, 15);
+      const step1 = sec => setStatus(pf, `🔎 [1/3] 인스타그램에서 "${escapeHtml(label)}" ${kindWord} 찾는 중...${waitMsg(sec)}`, 15);
       step1(0);
       const found = await apifyRun("igSearch", {
-        hashtags: [term], keywordSearch: mode === "keyword", resultsType: type, resultsLimit: max,
+        hashtags: [term], keywordSearch: mode === "keyword", resultsType: wantReels ? "reels" : "posts", resultsLimit: fetchLimit,
       }, step1);
       cost += found.length * price;
       apifyAddCost(found.length * price);
@@ -108,6 +132,17 @@ async function igRun() {
       let posts = found.filter(p => p && !p.error).map(igNorm)
         .filter(p => p.owner && p.id && !seen.has(p.id) && seen.add(p.id));
       if (!posts.length) throw new Error("검색 결과가 없습니다. 검색어나 검색 방식을 바꿔보세요.");
+
+      // 포스트 / 릴스 / 전체. 릴스 검색 결과는 전부 릴스이므로 종류 표시만 맞춰주고, 전체는 섞인 그대로 둔다
+      let otherKind = 0;
+      if (wantReels) {
+        posts.forEach(p => { p.kind = "릴스"; });
+      } else if (type === "posts") {
+        const before = posts.length;
+        posts = posts.filter(p => p.kind !== "릴스");
+        otherKind = before - posts.length;
+        if (!posts.length) throw new Error(`"${label}" 인기 게시물 ${before}개가 전부 릴스라 포스트가 없습니다. 콘텐츠를 '릴스'로 바꿔 검색해보세요.`);
+      }
 
       let outOfRange = 0;
       if (months > 0) {
@@ -129,11 +164,12 @@ async function igRun() {
       setStatus(pf, "🧮 [3/3] 아웃라이어 배수 계산 중...", 90);
       const rows = posts.map(n => {
         const prof = profiles[n.owner];
-        return igRow(n, prof ? toCount(prof.followersCount) : null, igBaseline(prof, n).avg);
+        return igRow(igFillFromProfile(n, prof), prof ? toCount(prof.followersCount) : null, igBaseline(prof, n).avg);
       });
       const noBase = rows.filter(r => r.outlier == null).length;
 
-      setStatus(pf, `✅ 완료! 게시물 ${rows.length}개 · 계정 ${owners.length}개`
+      setStatus(pf, `✅ 완료! ${kindWord} ${rows.length}개 · 계정 ${owners.length}개`
+        + (otherKind ? ` · 릴스 ${otherKind}개 제외` : "")
         + (outOfRange ? ` · 기간 밖 ${outOfRange}개 제외` : "")
         + (noBase ? ` · 판정 불가 ${noBase}개(비공개 계정·좋아요 숨김)` : "")
         + ` · 비용 ${fmtUsd(cost)}`, 100);
@@ -142,7 +178,7 @@ async function igRun() {
         rows, topic: label, channelCount: owners.length, costText: fmtUsd(cost),
         history: {
           type: "search",
-          desc: (mode === "hashtag" ? "해시태그" : "키워드") + (type === "reels" ? " · 릴스만" : "")
+          desc: (mode === "hashtag" ? "해시태그" : "키워드") + " · " + (type === "all" ? "전체" : kindWord)
             + (months > 0 ? ` · 최근 ${months}개월` : ""),
         },
       });
@@ -278,7 +314,7 @@ async function igAnalyzePost(ref, resultEl, waiting) {
         ])}
         <div class="note">
           ${verdict.desc}
-          ${rank != null && base.n ? `<br>📊 이 계정 최근 게시물 ${base.n}개와 비교하면 반응수 <b>${rank}위</b> 수준 (고정 게시물 제외)` : ""}
+          ${rank != null && base.n ? `<br>📊 이 계정 최근 ${base.sameKind ? (n.kind === "릴스" ? "릴스" : "포스트") : "게시물"} ${base.n}개와 비교하면 반응수 <b>${rank}위</b> 수준 (고정 게시물 제외)` : ""}
           ${r.metric == null ? "<br>⚠️ 좋아요 수가 숨겨져 있어 배수를 계산할 수 없습니다." : ""}
           ${!prof ? "<br>⚠️ 계정 정보를 불러오지 못해 평균을 계산할 수 없습니다." : ""}
         </div>

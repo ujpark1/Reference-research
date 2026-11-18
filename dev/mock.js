@@ -101,7 +101,7 @@ function thPost(owner, seed, mult, extra = {}) {
     type: "post", id: String(hash(seed)) + "77", code, username: owner, fullName: owner.replace(/[._]/g, " "),
     text: TITLES[hash(seed) % TITLES.length] + "\n(모의 데이터) 길게 이어지는 본문…",
     likeCount: Math.round(metric * 0.8), replyCount: Math.round(metric * 0.12), repostCount: Math.round(metric * 0.05),
-    quoteCount: Math.round(metric * 0.03), shareCount: 2, viewCount: null,
+    quoteCount: Math.round(metric * 0.03), shareCount: 2, viewCount: hash(seed) % 9 === 0 ? null : Math.round(metric * (20 + r() * 40)),
     createdAt: daysAgoISO(1 + Math.floor(r() * 60)), url: `https://www.threads.com/@${owner}/post/${code}`,
     isReply: false, isRepost: false, isPinned: false, likesHidden: false, mediaType: "text", images: [], videos: [],
     ...extra,
@@ -113,7 +113,9 @@ function runActor(actor, input) {
     const term = input.hashtags[0];
     const posts = Array.from({ length: input.resultsLimit }, (_, i) => {
       const owner = USERS[hash(term + i) % USERS.length] + (i % 4 === 3 ? "_" + (i % 7) : "");
-      return igPost(owner, term + "#" + i, MULTS[hash(term + "m" + i) % MULTS.length]);
+      const p = igPost(owner, term + "#" + i, MULTS[hash(term + "m" + i) % MULTS.length]);
+      if (input.resultsType === "reels") Object.assign(p, { type: "Video", productType: "clips", videoPlayCount: p.likesCount * 14, videoDuration: 31 });
+      return p;
     });
     posts[1].likesCount = -1;                       // 좋아요 숨김 사례
     posts[2].ownerUsername = "private.person";      // 프로필을 못 가져오는 사례
@@ -171,7 +173,9 @@ export async function apify(req, res) {
   return res.status(200).json(run.items);
 }
 
-export function img(req, res) {
+export async function img(req, res) {
+  // 가짜 타일은 모의 데이터의 주소(/mock/)에만. 모의 서버에서 실제 토큰으로 수집한 진짜 주소는 진짜 프록시로 넘긴다
+  if (!String(req.query.u || "").includes("/mock/")) return (await import("../api/img.js")).default(req, res);
   const label = decodeURIComponent(String(req.query.u || "")).split("/").pop().slice(0, 6);
   const hue = hash(req.query.u) % 360;
   res.setHeader("Content-Type", "image/svg+xml");

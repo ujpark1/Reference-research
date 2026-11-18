@@ -143,9 +143,11 @@ function ytRow(v, subs, avg) {
   const likes = st.likeCount != null ? parseInt(st.likeCount) : null;
   const comments = st.commentCount != null ? parseInt(st.commentCount) : null;
   const t = s.thumbnails || {};
+  const sec = ytParseDuration(v.contentDetails?.duration);
   return {
     id: v.id,
     title: s.title,
+    short: sec > 0 && sec <= 180,   // 3분 이하를 쇼츠로 간주 (결과 필터용)
     views, likes, comments, subs,
     metric: views,
     outlier: avg > 0 ? views / avg : null,
@@ -156,7 +158,7 @@ function ytRow(v, subs, avg) {
     channelAvg: avg ? Math.round(avg) : null,
     tier: tierOf(subs),
     date: s.publishedAt.slice(0, 10),
-    duration: fmtDuration(ytParseDuration(v.contentDetails?.duration)),
+    duration: fmtDuration(sec),
     patterns: classifyTitle(s.title),
     url: `https://www.youtube.com/watch?v=${v.id}`,
     thumb: (t.high || t.medium || t.default || {}).url || "",

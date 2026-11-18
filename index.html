@@ -91,8 +91,9 @@
         <div>
           <label for="ig-type">콘텐츠</label>
           <select id="ig-type">
-            <option value="posts" selected>게시물 전체</option>
-            <option value="reels">릴스만</option>
+            <option value="posts" selected>포스트</option>
+            <option value="reels">릴스</option>
+            <option value="all">전체</option>
           </select>
         </div>
         <div>
@@ -117,9 +118,9 @@
       </div>
       <div class="apikey-row">
         <input type="password" class="apify-token" autocomplete="off" placeholder="Apify API 토큰 (한 번 입력하면 이 브라우저에 저장됩니다)">
-        <span class="hint"><b class="apify-month" style="color:var(--green)"></b> · 실행 1회당 약 $0.10~0.25 (게시물 + 계정 수 × $0.0023)</span>
+        <span class="hint"><b class="apify-month" style="color:var(--green)"></b> · 실행 1회당 약 $0.10~0.35 (가져온 게시물 + 계정 수 × $0.0023 · 포스트는 릴스를 걸러내느라 2배를 가져옵니다)</span>
       </div>
-      <div class="basis-note" style="margin:12px 0 0">아웃라이어 = 이 게시물의 <b>반응수(좋아요+댓글)</b> ÷ 그 계정 최근 게시물의 평균 반응수. 조회수는 릴스에만 있어서 기준에서 뺐습니다.</div>
+      <div class="basis-note" style="margin:12px 0 0">아웃라이어 = 이 게시물의 <b>반응수(좋아요+댓글)</b> ÷ 그 계정 최근 게시물의 평균 반응수. 평균은 같은 종류끼리(포스트는 포스트, 릴스는 릴스) 비교하고, 같은 종류가 3개 미만이면 전체로 비교합니다.</div>
     </div>
 
     <div class="panel">
@@ -137,7 +138,7 @@
   <!-- ==================== Threads ==================== -->
   <section data-pf-section="threads">
     <div class="panel">
-      <div class="form-grid" style="--n:4">
+      <div class="form-grid" style="--n:5">
         <div>
           <label for="th-topic">검색어</label>
           <input type="text" id="th-topic" placeholder="예: 퇴사, 사이드프로젝트, 육아..." onkeydown="if(event.key==='Enter')thRun()">
@@ -169,6 +170,13 @@
           </select>
         </div>
         <div>
+          <label for="th-basis">아웃라이어 기준</label>
+          <select id="th-basis">
+            <option value="views" selected>조회수</option>
+            <option value="eng">반응수</option>
+          </select>
+        </div>
+        <div>
           <label for="th-replies">답글</label>
           <select id="th-replies">
             <option value="exclude" selected>제외</option>
@@ -181,7 +189,7 @@
         <input type="password" class="apify-token" autocomplete="off" placeholder="Apify API 토큰 (Instagram 탭과 같은 토큰)">
         <span class="hint"><b class="apify-month" style="color:var(--green)"></b> · <span id="th-estimate"></span></span>
       </div>
-      <div class="basis-note" style="margin:12px 0 0">아웃라이어 = 이 글의 <b>반응수(좋아요+답글+리포스트+인용)</b> ÷ 그 계정 최근 글의 평균 반응수. 스레드는 조회수가 공개되지 않습니다. 좋아요 10개 미만인 글은 검색에서 제외합니다.</div>
+      <div class="basis-note" style="margin:12px 0 0">아웃라이어 = 이 글의 <b>조회수</b> ÷ 그 계정 최근 글의 평균 조회수. 기준을 <b>반응수(좋아요+답글+리포스트+인용)</b>로 바꾸면 다시 수집하지 않고 바로 다시 계산합니다. 좋아요 10개 미만인 글은 검색에서 제외합니다.</div>
     </div>
 
     <div class="panel">
@@ -221,6 +229,7 @@
     <h2><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg> 결과 <span id="resultCount" style="color:var(--text-dim);font-size:14px;font-weight:400"></span></h2>
     <div class="right">
       <div class="filters">
+        <select id="kindFilter" aria-label="종류 필터"></select>
         <select id="tierFilter" aria-label="규모 필터"></select>
         <select id="minOutlier" aria-label="최소 배수 필터">
           <option value="0" selected>배수 전체</option>

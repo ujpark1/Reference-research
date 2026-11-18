@@ -28,7 +28,7 @@ const ACTORS = {
       hashtags: need(list(b.hashtags, 1), "hashtags"),
       keywordSearch: !!b.keywordSearch,
       resultsType: b.resultsType === "reels" ? "reels" : "posts",
-      resultsLimit: int(b.resultsLimit, 1, 50, 30),
+      resultsLimit: int(b.resultsLimit, 1, 100, 30),
     }),
   },
   igProfile: {
@@ -47,7 +47,7 @@ const ACTORS = {
   threads: {
     id: "lergassy~threads-scraper", actId: "hcPo0mbyQuWE4agKO",
     clean: b => {
-      const common = { includeViews: false, includeRunSummary: false };
+      const common = { includeViews: b.includeViews !== false, includeRunSummary: false };
       if (b.mode === "search") {
         const max = int(b.maxPosts, 1, 60, 20);
         const out = {

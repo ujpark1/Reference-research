@@ -93,6 +93,15 @@ function outlierBadge(o) {
   return `<span class="outlier-badge ${cls}">${o.toFixed(1)}x</span>`;
 }
 
+// 쇼츠 여부 — 새 행은 short 값이 있고, 예전 히스토리 행은 "분:초" 길이 문자열에서 계산한다 (3분 이하 = 쇼츠)
+function isShortRow(r) {
+  if (r.short != null) return r.short;
+  const parts = String(r.duration || "").split(":").map(Number);
+  if (!parts.length || parts.some(isNaN)) return false;
+  const sec = parts.reduce((a, b) => a * 60 + b, 0);
+  return sec > 0 && sec <= 180;
+}
+
 // ---------------- 플랫폼 정의 ----------------
 const cellNum = key => r => fmtNum(r[key]);
 const cellHidden = key => r => r[key] != null ? fmtNum(r[key]) : "비공개";
@@ -104,6 +113,9 @@ const PLATFORMS = {
   youtube: {
     label: "YouTube", item: "영상", owner: "채널", follower: "구독자", hook: "제목", dateLabel: "업로드",
     defaultSort: "views", thumb: "wide", costLabel: "쿼터 사용량",
+    // 결과 위 종류 필터: [값, 라벨] 목록과 행 → 값
+    kinds: [["all", "길이 전체"], ["long", "쇼츠 제외"], ["short", "쇼츠만"]],
+    kindOf: r => isShortRow(r) ? "short" : "long",
     patternSub: "어떤 패키징이 반복적으로 터지는가 — 제목이 진짜 상품이다",
     gemSub: "구독자 후광 없이 순수하게 주제·제목·썸네일로 이긴, 가장 베낄 가치가 큰 레퍼런스 (구독자 10만 미만 · 3배 이상)",
     steps: [
@@ -132,6 +144,8 @@ const PLATFORMS = {
   instagram: {
     label: "Instagram", item: "게시물", owner: "계정", follower: "팔로워", hook: "캡션 첫 줄", dateLabel: "게시일",
     defaultSort: "outlier", thumb: "square", costLabel: "예상 비용",
+    kinds: [["all", "종류 전체"], ["post", "포스트만"], ["reel", "릴스만"]],
+    kindOf: r => r.kind === "릴스" ? "reel" : "post",
     patternSub: "어떤 첫 줄(훅)이 반복적으로 터지는가 — 캡션 첫 줄이 스크롤을 멈춘다",
     gemSub: "팔로워 후광 없이 콘텐츠 자체로 이긴, 가장 베낄 가치가 큰 레퍼런스 (팔로워 10만 미만 · 3배 이상)",
     steps: [
@@ -143,7 +157,7 @@ const PLATFORMS = {
       { key: "metric", label: "반응수", tip: "좋아요 + 댓글", cell: cellBold("metric") },
       { key: "likes", label: "좋아요", cell: cellHidden("likes") },
       { key: "comments", label: "댓글", cell: cellNum("comments") },
-      { key: "views", label: "조회수", tip: "릴스·영상만", cell: cellNum("views") },
+      { key: "views", label: "조회수", tip: "릴스·영상만", hideIfEmpty: true, cell: cellNum("views") },
       { key: "channelAvg", label: "계정평균", tip: "그 계정 최근 게시물의 평균 반응수", dim: true, cell: cellNum("channelAvg") },
       COL_OUTLIER,
       { key: "engagement", label: "참여율", tip: "반응수 ÷ 팔로워", cell: cellPct },
@@ -160,26 +174,29 @@ const PLATFORMS = {
     label: "Threads", item: "글", owner: "계정", follower: "팔로워", hook: "본문 첫 줄", dateLabel: "게시일",
     defaultSort: "outlier", thumb: null, costLabel: "예상 비용",
     patternSub: "어떤 첫 문장이 반복적으로 터지는가 — 스레드는 첫 문장이 전부다",
+    prepare: null,   // threads.js 가 채운다
     gemSub: "팔로워 후광 없이 글 자체로 이긴, 가장 베낄 가치가 큰 레퍼런스 (팔로워 10만 미만 · 3배 이상)",
     steps: [
       ["1. 키워드로 검색", "쓰려는 글의 주제를 검색하면 그 주제로 반응을 얻은 글을 모아줍니다"],
-      ["2. 아웃라이어로 정렬", '좋아요 수가 아니라 "그 계정 평소 대비 몇 배 터졌나"로 레퍼런스를 고르세요'],
+      ["2. 아웃라이어로 정렬", '조회수가 아니라 "그 계정 평소 대비 몇 배 터졌나"로 레퍼런스를 고르세요'],
       ["3. 패턴 찾기", "첫 문장 패턴·팔로워 규모 인사이트에서 반복되는 승리 공식을 확인하세요"],
     ],
     cols: [
-      { key: "metric", label: "반응수", tip: "좋아요 + 답글 + 리포스트 + 인용", cell: cellBold("metric") },
+      { key: "views", label: "조회수", hideIfEmpty: true, cell: r => r.views != null ? `<b>${fmtNum(r.views)}</b>` : "-" },
+      { key: "metric", label: "반응수", tip: "좋아요 + 답글 + 리포스트 + 인용", cell: cellHidden("metric") },
       { key: "likes", label: "좋아요", cell: cellHidden("likes") },
       { key: "comments", label: "답글", cell: cellNum("comments") },
       { key: "shares", label: "리포스트", tip: "리포스트 + 인용", cell: cellNum("shares") },
-      { key: "channelAvg", label: "계정평균", tip: "그 계정 최근 글의 평균 반응수", dim: true, cell: cellNum("channelAvg") },
+      { key: "channelAvg", label: "계정평균", tip: "그 계정 최근 글의 평균 — 위에서 고른 기준(조회수/반응수)", dim: true, cell: cellNum("channelAvg") },
       COL_OUTLIER,
       { key: "engagement", label: "참여율", tip: "반응수 ÷ 팔로워", cell: cellPct },
     ],
     csv: [
-      ["title", "본문첫줄"], ["text", "본문전문"], ["kind", "유형"], ["metric", "반응수"], ["likes", "좋아요"],
-      ["comments", "답글"], ["shares", "리포스트+인용"], ["outlier", "아웃라이어배수"], ["velocity", "일일반응수"],
+      ["title", "본문첫줄"], ["text", "본문전문"], ["kind", "유형"], ["views", "조회수"], ["metric", "반응수"], ["likes", "좋아요"],
+      ["comments", "답글"], ["shares", "리포스트+인용"], ["outlierViews", "조회수배수"], ["outlierEng", "반응수배수"],
+      ["avgViews", "계정평균조회수"], ["avgEng", "계정평균반응수"], ["velocity", "일일반응수"],
       ["engagement", "참여율(%)"], ["channel", "계정"], ["subs", "팔로워"], ["tier", "팔로워규모"],
-      ["channelAvg", "계정평균반응수"], ["date", "게시일"], ["patterns", "첫줄패턴"], ["url", "URL"],
+      ["date", "게시일"], ["patterns", "첫줄패턴"], ["url", "URL"],
     ],
   },
 };
@@ -224,6 +241,7 @@ function updateTabBusy() {
 // 수집 결과를 상태에 반영 → (보고 있는 탭이면) 화면 갱신 → 히스토리 저장
 function commitResults(pf, { rows, topic, sortKey, channelCount, costText, history }) {
   const st = S[pf];
+  PLATFORMS[pf].prepare?.(rows);   // 플랫폼별 후처리 (스레드: 선택한 기준의 배수로 맞춤)
   st.rows = rows;
   st.topic = topic;
   st.sort = { key: sortKey || PLATFORMS[pf].defaultSort, dir: -1 };
@@ -261,6 +279,8 @@ function switchTab(pf) {
   $("tierFilter").innerHTML = [`<option value="all">${P.follower} 규모 전체</option>`]
     .concat(["1만 미만", "1만~10만", "10만~100만", "100만 이상"].map(t => `<option value="${t}">${t}</option>`)).join("");
   $("minOutlier").value = "0";
+  $("kindFilter").style.display = P.kinds ? "" : "none";
+  $("kindFilter").innerHTML = (P.kinds || []).map(([v, label]) => `<option value="${v}">${label}</option>`).join("");
 
   renderHistory();
   renderResults();
@@ -354,7 +374,10 @@ function filteredRows() {
   const st = S[PF];
   const tier = $("tierFilter").value;
   const minOut = parseFloat($("minOutlier").value);
+  const P = PLATFORMS[PF];
+  const kind = P.kinds ? $("kindFilter").value : "all";
   let rows = [...st.rows];
+  if (kind && kind !== "all") rows = rows.filter(r => P.kindOf(r) === kind);
   if (tier !== "all") rows = rows.filter(r => r.tier === tier);
   if (minOut > 0) rows = rows.filter(r => r.outlier != null && r.outlier >= minOut);
   const { key, dir } = st.sort;
@@ -400,6 +423,7 @@ function thumbFail(img) {
 function render() {
   const P = PLATFORMS[PF], st = S[PF];
   const rows = filteredRows();
+  const cols = P.cols.filter(c => !c.hideIfEmpty || st.rows.some(r => r[c.key] != null));
 
   const th = (key, label, cls = "", tip = "") => {
     const active = st.sort.key === key;
@@ -409,7 +433,7 @@ function render() {
   $("thead").innerHTML = "<th>#</th>"
     + (P.thumb ? "<th>썸네일</th>" : "")
     + `<th>${P.hook} / 패턴</th>`
-    + P.cols.map(c => th(c.key, c.label, "num", c.tip)).join("")
+    + cols.map(c => th(c.key, c.label, "num", c.tip)).join("")
     + `<th>${P.owner}</th>`
     + th("subs", P.follower, "num")
     + th("date", P.dateLabel);
@@ -430,7 +454,7 @@ function render() {
         <a href="${safeUrl(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.title) || "(본문 없음)"}</a>
         <div class="meta">${tags}</div>
       </td>
-      ${P.cols.map(c => `<td class="num"${c.dim ? ' style="color:var(--text-dim)"' : ""}>${c.cell(r)}</td>`).join("")}
+      ${cols.map(c => `<td class="num"${c.dim ? ' style="color:var(--text-dim)"' : ""}>${c.cell(r)}</td>`).join("")}
       <td>${escapeHtml(r.channel)}</td>
       <td class="num">${r.subs != null ? fmtNum(r.subs) : "비공개"}</td>
       <td style="white-space:nowrap">${escapeHtml(r.date)}</td>
@@ -469,7 +493,8 @@ function renderInsights() {
   const gems = st.rows
     .filter(r => r.outlier != null && r.outlier >= 3 && r.subs != null && r.subs < 100000)
     .sort((a, b) => b.outlier - a.outlier).slice(0, 8);
-  const mainNum = r => PF === "youtube" ? `조회수 ${fmtNum(r.views)}` : `반응수 ${fmtNum(r.metric)}`;
+  const mainNum = r => PF === "youtube" ? `조회수 ${fmtNum(r.views)}`
+    : (r.views != null ? `조회수 ${fmtNum(r.views)} · ` : "") + `반응수 ${fmtNum(r.metric)}`;
   $("gems").innerHTML = gems.length ? gems.map(r => `
     <div class="gem-item">
       ${P.thumb ? `<a href="${safeUrl(r.url)}" target="_blank" rel="noopener">${thumbImg(r)}</a>` : ""}
@@ -536,6 +561,7 @@ function initApp() {
   apifyInit();
   thInit();
   // 필터 변경 시 즉시 재렌더
+  $("kindFilter").addEventListener("change", () => S[PF].stats && render());
   $("tierFilter").addEventListener("change", () => S[PF].stats && render());
   $("minOutlier").addEventListener("change", () => S[PF].stats && render());
 
