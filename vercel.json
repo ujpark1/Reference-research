@@ -1,0 +1,11 @@
+{
+  "functions": {
+    "api/apify.js": { "maxDuration": 60 }
+  },
+  "headers": [
+    {
+      "source": "/(|index.html|assets/.*)",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+    }
+  ]
+}

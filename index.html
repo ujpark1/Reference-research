@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<title>레퍼런스 리서치</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1><span class="logo"><svg class="icon logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span> 레퍼런스 리서치</h1>
+    <p>절대 수치가 아니라 <b>"평소보다 얼마나 터졌나"(아웃라이어 배수)</b>가 아이디어의 힘을 보여줍니다.</p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="플랫폼">
+    <button role="tab" data-tab="youtube" onclick="switchTab('youtube')"><span>YouTube</span><span class="dot"></span></button>
+    <button role="tab" data-tab="instagram" onclick="switchTab('instagram')"><span>Instagram</span><span class="dot"></span></button>
+    <button role="tab" data-tab="threads" onclick="switchTab('threads')"><span>Threads</span><span class="dot"></span></button>
+  </div>
+
+  <!-- ==================== YouTube ==================== -->
+  <section data-pf-section="youtube">
+    <div class="panel">
+      <div class="form-grid" style="--n:3">
+        <div>
+          <label for="yt-topic">주제어</label>
+          <input type="text" id="yt-topic" placeholder="예: 부업, 다이어트, 캠핑..." onkeydown="if(event.key==='Enter')ytRun()">
+        </div>
+        <div>
+          <label for="yt-months">업로드 기간</label>
+          <select id="yt-months">
+            <option value="1">최근 1개월</option>
+            <option value="3">최근 3개월</option>
+            <option value="6" selected>최근 6개월</option>
+            <option value="12">최근 1년</option>
+            <option value="0">전체 기간</option>
+          </select>
+        </div>
+        <div>
+          <label for="yt-max">영상 수</label>
+          <select id="yt-max">
+            <option value="25">25개</option>
+            <option value="50" selected>50개</option>
+            <option value="100">100개</option>
+          </select>
+        </div>
+        <div>
+          <label for="yt-shorts">쇼츠</label>
+          <select id="yt-shorts">
+            <option value="include" selected>포함</option>
+            <option value="exclude">제외</option>
+          </select>
+        </div>
+        <button id="yt-runBtn" onclick="ytRun()"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> 수집 시작</button>
+      </div>
+      <div class="apikey-row">
+        <input type="password" id="yt-apiKey" autocomplete="off" placeholder="YouTube API 키 (한 번 입력하면 이 브라우저에 저장됩니다)">
+        <span class="hint"><b id="yt-quotaToday" style="color:var(--green)"></b> · 실행 1회당 약 150~250유닛 소모</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <label for="yt-link"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> 영상/채널 분석 — 영상 링크는 아웃라이어 판정, 채널 링크(@핸들)는 채널 요약 + 최근 영상 30개 분석 (약 4~6유닛)</label>
+      <div style="display:flex; gap:10px;">
+        <input type="text" id="yt-link" placeholder="영상: youtube.com/watch?v=... · 채널: youtube.com/@핸들 또는 @핸들"
+               onkeydown="if(event.key==='Enter')ytAnalyze()">
+        <button id="yt-analyzeBtn" onclick="ytAnalyze()">분석</button>
+      </div>
+      <div id="yt-analyzeResult"></div>
+    </div>
+    <div class="status" id="status-youtube" role="status" aria-live="polite"></div>
+  </section>
+
+  <!-- ==================== Instagram ==================== -->
+  <section data-pf-section="instagram">
+    <div class="panel">
+      <div class="form-grid" style="--n:4">
+        <div>
+          <label for="ig-topic">검색어</label>
+          <input type="text" id="ig-topic" placeholder="예: 홈카페, 오운완, 제주여행..." onkeydown="if(event.key==='Enter')igRun()">
+        </div>
+        <div>
+          <label for="ig-mode">검색 방식</label>
+          <select id="ig-mode">
+            <option value="hashtag" selected>#해시태그</option>
+            <option value="keyword">키워드</option>
+          </select>
+        </div>
+        <div>
+          <label for="ig-type">콘텐츠</label>
+          <select id="ig-type">
+            <option value="posts" selected>게시물 전체</option>
+            <option value="reels">릴스만</option>
+          </select>
+        </div>
+        <div>
+          <label for="ig-months">게시 기간</label>
+          <select id="ig-months">
+            <option value="1">최근 1개월</option>
+            <option value="3">최근 3개월</option>
+            <option value="6">최근 6개월</option>
+            <option value="12">최근 1년</option>
+            <option value="0" selected>전체 기간</option>
+          </select>
+        </div>
+        <div>
+          <label for="ig-max">게시물 수</label>
+          <select id="ig-max">
+            <option value="20">20개</option>
+            <option value="30" selected>30개</option>
+            <option value="50">50개</option>
+          </select>
+        </div>
+        <button id="ig-runBtn" onclick="igRun()"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> 수집 시작</button>
+      </div>
+      <div class="apikey-row">
+        <input type="password" class="apify-token" autocomplete="off" placeholder="Apify API 토큰 (한 번 입력하면 이 브라우저에 저장됩니다)">
+        <span class="hint"><b class="apify-month" style="color:var(--green)"></b> · 실행 1회당 약 $0.10~0.25 (게시물 + 계정 수 × $0.0023)</span>
+      </div>
+      <div class="basis-note" style="margin:12px 0 0">아웃라이어 = 이 게시물의 <b>반응수(좋아요+댓글)</b> ÷ 그 계정 최근 게시물의 평균 반응수. 조회수는 릴스에만 있어서 기준에서 뺐습니다.</div>
+    </div>
+
+    <div class="panel">
+      <label for="ig-link"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> 게시물/계정 분석 — 게시물·릴스 링크는 아웃라이어 판정, 계정(@아이디)은 계정 요약 + 최근 게시물 12개 분석 (약 $0.003~0.005)</label>
+      <div style="display:flex; gap:10px;">
+        <input type="text" id="ig-link" placeholder="게시물: instagram.com/p/... · 릴스: instagram.com/reel/... · 계정: @아이디"
+               onkeydown="if(event.key==='Enter')igAnalyze()">
+        <button id="ig-analyzeBtn" onclick="igAnalyze()">분석</button>
+      </div>
+      <div id="ig-analyzeResult"></div>
+    </div>
+    <div class="status" id="status-instagram" role="status" aria-live="polite"></div>
+  </section>
+
+  <!-- ==================== Threads ==================== -->
+  <section data-pf-section="threads">
+    <div class="panel">
+      <div class="form-grid" style="--n:4">
+        <div>
+          <label for="th-topic">검색어</label>
+          <input type="text" id="th-topic" placeholder="예: 퇴사, 사이드프로젝트, 육아..." onkeydown="if(event.key==='Enter')thRun()">
+        </div>
+        <div>
+          <label for="th-months">게시 기간</label>
+          <select id="th-months">
+            <option value="1">최근 1개월</option>
+            <option value="3" selected>최근 3개월</option>
+            <option value="6">최근 6개월</option>
+            <option value="12">최근 1년</option>
+            <option value="0">전체 기간</option>
+          </select>
+        </div>
+        <div>
+          <label for="th-max">게시물 수</label>
+          <select id="th-max">
+            <option value="20" selected>20개</option>
+            <option value="40">40개</option>
+            <option value="60">60개</option>
+          </select>
+        </div>
+        <div>
+          <label for="th-sample">계정 평균 표본</label>
+          <select id="th-sample">
+            <option value="5">최근 5개</option>
+            <option value="10" selected>최근 10개</option>
+            <option value="20">최근 20개</option>
+          </select>
+        </div>
+        <div>
+          <label for="th-replies">답글</label>
+          <select id="th-replies">
+            <option value="exclude" selected>제외</option>
+            <option value="include">포함</option>
+          </select>
+        </div>
+        <button id="th-runBtn" onclick="thRun()"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> 수집 시작</button>
+      </div>
+      <div class="apikey-row">
+        <input type="password" class="apify-token" autocomplete="off" placeholder="Apify API 토큰 (Instagram 탭과 같은 토큰)">
+        <span class="hint"><b class="apify-month" style="color:var(--green)"></b> · <span id="th-estimate"></span></span>
+      </div>
+      <div class="basis-note" style="margin:12px 0 0">아웃라이어 = 이 글의 <b>반응수(좋아요+답글+리포스트+인용)</b> ÷ 그 계정 최근 글의 평균 반응수. 스레드는 조회수가 공개되지 않습니다. 좋아요 10개 미만인 글은 검색에서 제외합니다.</div>
+    </div>
+
+    <div class="panel">
+      <label for="th-link"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> 글/계정 분석 — 글 링크는 아웃라이어 판정, 계정(@아이디)은 계정 요약 + 최근 글 30개 분석 (약 $0.06)</label>
+      <div style="display:flex; gap:10px;">
+        <input type="text" id="th-link" placeholder="글: threads.com/@아이디/post/... · 계정: threads.com/@아이디 또는 @아이디"
+               onkeydown="if(event.key==='Enter')thAnalyze()">
+        <button id="th-analyzeBtn" onclick="thAnalyze()">분석</button>
+      </div>
+      <div id="th-analyzeResult"></div>
+    </div>
+    <div class="status" id="status-threads" role="status" aria-live="polite"></div>
+  </section>
+
+  <!-- ==================== 공통: 히스토리 · 결과 · 인사이트 ==================== -->
+  <div class="panel" id="historyPanel">
+    <div class="head">
+      <label><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> 히스토리 — 클릭하면 추가 비용 없이 다시 불러옵니다 (이 브라우저에 저장, 플랫폼별 최근 30개 유지)</label>
+      <button class="secondary" onclick="clearHistory()">전체 삭제</button>
+    </div>
+    <div id="historyList"></div>
+  </div>
+
+  <div class="panel" id="emptyState">
+    <label>시작하기</label>
+    <div class="empty-steps" id="emptySteps"></div>
+  </div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card"><div class="label" id="statCountLabel">수집 영상</div><div class="value" id="statVideos">-</div></div>
+    <div class="stat-card"><div class="label" id="statOwnerLabel">채널 수</div><div class="value" id="statChannels">-</div></div>
+    <div class="stat-card"><div class="label">최고 아웃라이어 배수</div><div class="value" id="statMaxOutlier" style="color:var(--accent)">-</div></div>
+    <div class="stat-card"><div class="label" id="statCostLabel">쿼터 사용량</div><div class="value" id="statQuota">-</div></div>
+  </div>
+
+  <div class="results-header" id="resultsHeader">
+    <h2><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg> 결과 <span id="resultCount" style="color:var(--text-dim);font-size:14px;font-weight:400"></span></h2>
+    <div class="right">
+      <div class="filters">
+        <select id="tierFilter" aria-label="규모 필터"></select>
+        <select id="minOutlier" aria-label="최소 배수 필터">
+          <option value="0" selected>배수 전체</option>
+          <option value="2">2x 이상</option>
+          <option value="3">3x 이상</option>
+          <option value="5">5x 이상</option>
+          <option value="10">10x 이상</option>
+        </select>
+      </div>
+      <div class="actions">
+        <button class="secondary" onclick="downloadCSV()">CSV 다운로드</button>
+        <button class="secondary" onclick="downloadJSON()">JSON 다운로드</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-wrap" id="tableWrap">
+    <table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div id="insights">
+    <h2><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> 패턴 인사이트</h2>
+    <div class="insight-grid">
+      <div class="insight-card">
+        <h3 id="patternTitle">제목 패턴별 분포</h3>
+        <div class="sub" id="patternSub"></div>
+        <div id="patternBars"></div>
+      </div>
+      <div class="insight-card">
+        <h3 id="tierTitle">구독자 규모별 분포</h3>
+        <div class="sub" id="tierSub"></div>
+        <div id="tierBars"></div>
+      </div>
+      <div class="insight-card gem-card">
+        <h3 id="gemTitle">💎 작은 채널의 아웃라이어</h3>
+        <div class="sub" id="gemSub"></div>
+        <div id="gems"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    수치만 높고 참여가 빈약하면 낚시일 수 있습니다 · 레퍼런스는 모으는 게 아니라 패턴을 찾는 것입니다
+  </footer>
+</div>
+
+<script src="assets/core.js"></script>
+<script src="assets/youtube.js"></script>
+<script src="assets/apify.js"></script>
+<script src="assets/instagram.js"></script>
+<script src="assets/threads.js"></script>
+<script>initApp();</script>
+</body>
+</html>
