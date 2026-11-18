@@ -93,6 +93,26 @@ function thApplyBasis(rows, basis = thBasis()) {
   return rows;
 }
 
+// 결과 표의 열. 고른 기준의 [수치 | 계정 평균 | 아웃라이어]를 맨 앞에 나란히 두어 배수가 어떻게 나왔는지 바로 보이게 한다.
+function thCols(basis = thBasis()) {
+  const strong = key => r => r[key] != null ? `<b>${fmtNum(r[key])}</b>` : (key === "metric" ? "비공개" : "-");
+  const views = { key: "views", label: "조회수", cell: basis === "views" ? strong("views") : cellNum("views") };
+  const metric = { key: "metric", label: "반응수", tip: "좋아요 + 답글 + 리포스트 + 인용", cell: basis === "eng" ? strong("metric") : cellHidden("metric") };
+  const avgViews = { key: "avgViews", label: "평균 조회수", tip: "그 계정 최근 글의 평균 조회수 (답글·리포스트·고정 글·이 글 제외)", dim: true, cell: cellNum("avgViews") };
+  // 기준 전환 전에 저장된 옛 히스토리 행은 평균 반응수가 channelAvg 에만 있다
+  const avgEng = { key: "avgEng", label: "평균 반응수", tip: "그 계정 최근 글의 평균 반응수 (답글·리포스트·고정 글·이 글 제외)", dim: true, cell: r => fmtNum(r.avgEng ?? (r.outlierViews === undefined ? r.channelAvg : null)) };
+  const outlier = { ...COL_OUTLIER, tip: `${thBasisWord(basis)} ÷ 평균 ${thBasisWord(basis)}` };
+  const rest = [
+    { key: "likes", label: "좋아요", cell: cellHidden("likes") },
+    { key: "comments", label: "답글", cell: cellNum("comments") },
+    { key: "shares", label: "리포스트", tip: "리포스트 + 인용", cell: cellNum("shares") },
+    { key: "engagement", label: "참여율", tip: "반응수 ÷ 팔로워", cell: cellPct },
+  ];
+  return basis === "views"
+    ? [views, avgViews, outlier, metric, avgEng, ...rest]
+    : [metric, avgEng, outlier, views, avgViews, ...rest];
+}
+
 // 계정들의 최근 글 + 프로필(팔로워) 한 번에 조회 → { 계정: { subs, posts[] } }
 async function thAccounts(usernames, sample, onTick) {
   const items = await apifyRun("threads", {

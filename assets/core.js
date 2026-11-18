@@ -158,7 +158,7 @@ const PLATFORMS = {
       { key: "likes", label: "좋아요", cell: cellHidden("likes") },
       { key: "comments", label: "댓글", cell: cellNum("comments") },
       { key: "views", label: "조회수", tip: "릴스·영상만", hideIfEmpty: true, cell: cellNum("views") },
-      { key: "channelAvg", label: "계정평균", tip: "그 계정 최근 게시물의 평균 반응수", dim: true, cell: cellNum("channelAvg") },
+      { key: "channelAvg", label: "평균 반응수", tip: "그 계정 최근 게시물의 평균 반응수 (같은 종류끼리)", dim: true, cell: cellNum("channelAvg") },
       COL_OUTLIER,
       { key: "engagement", label: "참여율", tip: "반응수 ÷ 팔로워", cell: cellPct },
     ],
@@ -181,16 +181,7 @@ const PLATFORMS = {
       ["2. 아웃라이어로 정렬", '조회수가 아니라 "그 계정 평소 대비 몇 배 터졌나"로 레퍼런스를 고르세요'],
       ["3. 패턴 찾기", "첫 문장 패턴·팔로워 규모 인사이트에서 반복되는 승리 공식을 확인하세요"],
     ],
-    cols: [
-      { key: "views", label: "조회수", hideIfEmpty: true, cell: r => r.views != null ? `<b>${fmtNum(r.views)}</b>` : "-" },
-      { key: "metric", label: "반응수", tip: "좋아요 + 답글 + 리포스트 + 인용", cell: cellHidden("metric") },
-      { key: "likes", label: "좋아요", cell: cellHidden("likes") },
-      { key: "comments", label: "답글", cell: cellNum("comments") },
-      { key: "shares", label: "리포스트", tip: "리포스트 + 인용", cell: cellNum("shares") },
-      { key: "channelAvg", label: "계정평균", tip: "그 계정 최근 글의 평균 — 위에서 고른 기준(조회수/반응수)", dim: true, cell: cellNum("channelAvg") },
-      COL_OUTLIER,
-      { key: "engagement", label: "참여율", tip: "반응수 ÷ 팔로워", cell: cellPct },
-    ],
+    cols: () => thCols(),   // 고른 기준(조회수/반응수)에 따라 열 순서가 바뀐다 → threads.js
     csv: [
       ["title", "본문첫줄"], ["text", "본문전문"], ["kind", "유형"], ["views", "조회수"], ["metric", "반응수"], ["likes", "좋아요"],
       ["comments", "답글"], ["shares", "리포스트+인용"], ["outlierViews", "조회수배수"], ["outlierEng", "반응수배수"],
@@ -423,7 +414,8 @@ function thumbFail(img) {
 function render() {
   const P = PLATFORMS[PF], st = S[PF];
   const rows = filteredRows();
-  const cols = P.cols.filter(c => !c.hideIfEmpty || st.rows.some(r => r[c.key] != null));
+  const allCols = typeof P.cols === "function" ? P.cols() : P.cols;
+  const cols = allCols.filter(c => !c.hideIfEmpty || st.rows.some(r => r[c.key] != null));
 
   const th = (key, label, cls = "", tip = "") => {
     const active = st.sort.key === key;
