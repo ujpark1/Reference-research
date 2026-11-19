@@ -90,7 +90,8 @@ function igProfile(u) {
     username: u, fullName: u.replace(/[._]/g, " "), followersCount: b.subs, postsCount: 120 + (hash(u) % 400),
     verified: hash(u) % 7 === 0, private: false, profilePicUrlHD: `https://scontent.cdninstagram.com/mock/${u}.jpg`,
     latestPosts: Array.from({ length: 12 }, (_, i) =>
-      igPost(u, u + "#latest" + i, i === 0 ? 9 : [0.7, 0.9, 1.0, 1.1, 1.3][i % 5], { isPinned: i === 0 })),
+      Object.assign(igPost(u, u + "#latest" + i, i === 0 ? 9 : [0.7, 0.9, 1.0, 1.1, 1.3][i % 5], { isPinned: i === 0 }),
+        { type: i % 3 ? "Sidecar" : "Image", productType: undefined, videoPlayCount: undefined, videoViewCount: undefined, videoDuration: undefined })),
   };
 }
 function thPost(owner, seed, mult, extra = {}) {
@@ -124,6 +125,12 @@ function runActor(actor, input) {
   if (actor === "igProfile") {
     return input.usernames.filter(u => u !== "private.person" && u !== "no.such.user").map(igProfile);
   }
+  if (actor === "igReels") {
+    return input.username.filter(u => u !== "no.such.user").flatMap(u => Array.from({ length: input.resultsLimit }, (_, i) => {
+      const p = igPost(u, u + "#reel" + i, [0.8, 1.0, 1.2, 3.0, 9.0, 0.6][i % 6] * 4);
+      return Object.assign(p, { type: "Video", productType: "clips", videoPlayCount: p.likesCount * 40, videoViewCount: null, videoDuration: 20 + i });
+    }));
+  }
   if (actor === "igPost") {
     return [igPost("minji_home", input.directUrls[0], 6)];
   }
@@ -146,7 +153,7 @@ function runActor(actor, input) {
 }
 
 const RUNS = new Map();
-const ACT_IDS = { igSearch: "reGe1ST3OBgYZSsZJ", igProfile: "dSCLg0C3YEZ83HzYX", igPost: "shu8hvrXbJbY3Eb9W", threads: "hcPo0mbyQuWE4agKO" };
+const ACT_IDS = { igSearch: "reGe1ST3OBgYZSsZJ", igProfile: "dSCLg0C3YEZ83HzYX", igPost: "shu8hvrXbJbY3Eb9W", igReels: "xMc5Ga1oCONPmWJIa", threads: "hcPo0mbyQuWE4agKO" };
 export async function apify(req, res) {
   const { action } = req.query;
   if (action === "start") {

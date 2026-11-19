@@ -153,20 +153,14 @@ const PLATFORMS = {
       ["2. 아웃라이어로 정렬", '좋아요 수가 아니라 "그 계정 평소 대비 몇 배 터졌나"로 레퍼런스를 고르세요'],
       ["3. 패턴 찾기", "첫 줄 패턴·팔로워 규모 인사이트에서 반복되는 승리 공식을 확인하세요"],
     ],
-    cols: [
-      { key: "metric", label: "반응수", tip: "좋아요 + 댓글", cell: cellBold("metric") },
-      { key: "likes", label: "좋아요", cell: cellHidden("likes") },
-      { key: "comments", label: "댓글", cell: cellNum("comments") },
-      { key: "views", label: "조회수", tip: "릴스·영상만", hideIfEmpty: true, cell: cellNum("views") },
-      { key: "channelAvg", label: "평균 반응수", tip: "그 계정 최근 게시물의 평균 반응수 (같은 종류끼리)", dim: true, cell: cellNum("channelAvg") },
-      COL_OUTLIER,
-      { key: "engagement", label: "참여율", tip: "반응수 ÷ 팔로워", cell: cellPct },
-    ],
+    cols: () => igCols(),   // 릴스 기준(조회수/반응수)에 따라 열 순서가 바뀐다 → instagram.js
+    prepare: null,          // instagram.js 가 채운다
     csv: [
-      ["title", "캡션첫줄"], ["text", "캡션전문"], ["kind", "유형"], ["metric", "반응수"], ["likes", "좋아요"],
-      ["comments", "댓글"], ["views", "조회수"], ["outlier", "아웃라이어배수"], ["velocity", "일일반응수"],
+      ["title", "캡션첫줄"], ["text", "캡션전문"], ["kind", "유형"], ["views", "조회수"], ["metric", "반응수"], ["likes", "좋아요"],
+      ["comments", "댓글"], ["outlier", "아웃라이어배수"], ["basis", "배수기준"], ["outlierViews", "조회수배수"], ["outlierEng", "반응수배수"],
+      ["avgViews", "계정평균조회수(릴스)"], ["avgEng", "계정평균반응수"], ["velocity", "일일반응수"],
       ["engagement", "참여율(%)"], ["channel", "계정"], ["subs", "팔로워"], ["tier", "팔로워규모"],
-      ["channelAvg", "계정평균반응수"], ["date", "게시일"], ["patterns", "첫줄패턴"], ["url", "URL"], ["thumb", "썸네일URL"],
+      ["date", "게시일"], ["patterns", "첫줄패턴"], ["url", "URL"], ["thumb", "썸네일URL"],
     ],
   },
 
@@ -551,6 +545,7 @@ function downloadJSON() {
 function initApp() {
   ytInit();
   apifyInit();
+  igInit();
   thInit();
   // 필터 변경 시 즉시 재렌더
   $("kindFilter").addEventListener("change", () => S[PF].stats && render());

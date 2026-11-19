@@ -44,6 +44,15 @@ const ACTORS = {
       resultsLimit: 1,
     }),
   },
+  igReels: {
+    id: "apify~instagram-reel-scraper", actId: "xMc5Ga1oCONPmWJIa",
+    clean: b => ({
+      username: need(list(b.username, 60, 40), "username"),
+      resultsLimit: int(b.resultsLimit, 1, 12, 12),
+      // 건당 추가 요금이 붙는 옵션은 항상 끈다
+      includeSharesCount: false, includeTranscript: false, includeDownloadedVideo: false,
+    }),
+  },
   threads: {
     id: "lergassy~threads-scraper", actId: "hcPo0mbyQuWE4agKO",
     clean: b => {

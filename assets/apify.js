@@ -11,6 +11,7 @@ const APIFY_ACTORS = {
   igSearch:  { id: "apify~instagram-hashtag-scraper", price: 0.0023 },
   igProfile: { id: "apify~instagram-profile-scraper", price: 0.0023 },
   igPost:    { id: "apify~instagram-scraper",         price: 0.0023 },
+  igReels:   { id: "apify~instagram-reel-scraper",    price: 0.0023, start: 0.001 },   // 계정의 릴스 탭
   threads:   { id: "lergassy~threads-scraper",        price: 0.0018, profilePrice: 0.0036 },
 };
 
